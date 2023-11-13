@@ -3,11 +3,17 @@ package in.security.oauth2_19_RS.service.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
-import org.w3c.dom.ranges.RangeException;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import in.security.oauth2_19_RS.entity.Customer;
 import in.security.oauth2_19_RS.repository.CustomerRepository;
@@ -26,10 +32,10 @@ public class CustomerServiceImpl implements CustomerService {
 
 		validateCustomerCreateRequest(customer);
 		Customer customerObj = Customer.builder().firstName(customer.getFirstName()).lastName(customer.getLastName())
-				.address(customer.getAddress()).email(customer.getEmail()).build();
+				.street(customer.getStreet()).address(customer.getAddress()).city(customer.getCity())
+				.state(customer.getState()).email(customer.getEmail()).phone(customer.getPhone()).build();
 		customerRepository.save(customerObj);
 		return "Successfully Created";
-
 	}
 
 	public void validateCustomerCreateRequest(Customer customer) {
@@ -53,51 +59,43 @@ public class CustomerServiceImpl implements CustomerService {
 
 	@Override
 	public String deleteCustomer(String id) {
-		
+
 		Customer customer = customerRepository.findCustomerById(id);
-		if(ObjectUtils.isEmpty(customer)){
+		if (!ObjectUtils.isEmpty(customer)) {
+			customerRepository.deleteById(id);
+			return "Successfully deleted";
+		} else if (ObjectUtils.isEmpty(customer)) {
 			throw new RuntimeException("ID not found");
-		}
-		
-		if(!ObjectUtils.isEmpty(customer)) {
+		} else {
 			throw new IllegalArgumentException("Error Not deleted");
 		}
-		else 
-		{
-		customerRepository.deleteById(id);
-		
-
-		return "Successfully deleted";
-		}
-		
 	}
 
 	@Override
-	public String updateCustomer(String id, Customer customer) {
+	public String updateCustomer(Customer updateCustomer)
+			throws JsonMappingException, JsonProcessingException, ParseException {
 
-		if (ObjectUtils.isEmpty(customer)) {
-            throw new IllegalArgumentException("Body is empty");
-        }
+		
+		if (StringUtils.isEmpty(updateCustomer.getId())) {
+			throw new RuntimeException("UUID not found");
+		}
 
-        if (StringUtils.isEmpty(id)) {
-            throw new IllegalArgumentException("Id is empty");
-        }
+		Customer customer = customerRepository.findCustomerById(updateCustomer.getId());
+		JSONObject customerFromDb = (JSONObject) new JSONParser()
+				.parse(new ObjectMapper().writeValueAsString(customer));
 
-        Customer existingCustomer = customerRepository.findCustomerById(id);
+		JSONObject customerPayloadObject = (JSONObject) new JSONParser()
+				.parse(new ObjectMapper().writeValueAsString(updateCustomer));
 
-        if (ObjectUtils.isEmpty(existingCustomer)) {
-            throw new RuntimeException("UUID not found");
-        }
+		for (Object obj : customerPayloadObject.keySet()) {
+			String param = (String) obj;
+			customerFromDb.put(param, customerPayloadObject.get(param));
+		}
 
-        existingCustomer.setCity(customer.getCity());
-        existingCustomer.setFirstName(customer.getFirstName());
-        existingCustomer.setLastName(customer.getLastName());
-        existingCustomer.setAddress(customer.getAddress());
-        existingCustomer.setEmail(customer.getEmail());
+		customer = new ObjectMapper().readValue(customerFromDb.toJSONString(), Customer.class);
 
-        // Save the updated customer
-        customerRepository.save(existingCustomer);
-        return "Successfully updated";
+		customerRepository.save(customer);
+		return "Successfully updated";
+
 	}
-
 }

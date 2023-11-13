@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import in.security.oauth2_19_RS.model.ICustomerCreateRequest;
+import in.security.oauth2_19_RS.model.ICustomerUpdateRequest;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,6 +30,8 @@ public class Customer implements Serializable {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
+
+	@NotEmpty(groups = { ICustomerUpdateRequest.class }, message = "Id must not be null or empty")
 	@Id
 	private String id;
 
